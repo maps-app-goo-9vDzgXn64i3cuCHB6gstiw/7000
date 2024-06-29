@@ -22,16 +22,13 @@
     </form>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Get access to the video element, canvas, and img element
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
             const snapshot = document.getElementById('snapshot');
             const context = canvas.getContext('2d');
 
-            // Get access to the user's webcam
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(function (stream) {
-                    // Set the video source to the webcam stream
                     video.srcObject = stream;
                     video.play();
                 })
@@ -39,30 +36,21 @@
                     console.error("Error accessing webcam: " + err);
                 });
 
-            // Function to take a snapshot
             function takeSnapshot() {
-                // Draw the current video frame to the canvas
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Convert the canvas image to a data URL (base64 string)
                 const dataURL = canvas.toDataURL('image/png');
-                
-                // Set the data URL as the src of the img element to display the snapshot
                 snapshot.src = dataURL;
-                
-                // Set the data URL in the hidden input field for form submission
                 document.getElementById('imageData').value = dataURL;
             }
 
-            // Take a snapshot every second for 5 seconds
             let count = 0;
             const interval = setInterval(function () {
                 takeSnapshot();
                 count++;
                 if (count === 5) {
-                    clearInterval(interval); // Stop the interval after 5 snapshots
+                    clearInterval(interval);
                 }
-            }, 2000); // Interval set to 1000 milliseconds (1 second)
+            }, 1000);
         });
     </script>
 </body>
