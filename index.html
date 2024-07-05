@@ -3,36 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Webcam Snapshot</title>
+    <title>Webcam Recorder and Snapshot</title>
     <style>
-        #video, #canvas {
+        #video, #recordedVideo, .snapshot {
             max-width: 100%; /* Ensure video and canvas are responsive */
             height: auto;
         }
         .snapshot {
-            max-width: 100%;
-            height: auto;
             margin-top: 10px;
         }
     </style>
 </head>
 <body>
-    <h1>Webcam test 2</h1>
+    <h1>Webcam Recorder and Snapshot</h1>
     <video id="video" width="640" height="480" autoplay></video>
     <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
     <div id="snapshotsContainer"></div>
+    <video id="recordedVideo" width="640" height="480" controls></video>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
             const snapshotsContainer = document.getElementById('snapshotsContainer');
+            const recordedVideo = document.getElementById('recordedVideo');
             const context = canvas.getContext('2d');
-            const snapshots = [];
+            let mediaRecorder;
+            let recordedChunks = [];
 
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(function (stream) {
                     video.srcObject = stream;
                     video.play();
+
+                    mediaRecorder = new MediaRecorder(stream);
+
+                    mediaRecorder.ondataavailable = function (event) {
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = function () {
+                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                        recordedChunks = [];
+                        const url = URL.createObjectURL(blob);
+                        recordedVideo.src = url;
+                    };
+
+                    mediaRecorder.start();
+                    setTimeout(function () {
+                        mediaRecorder.stop();
+                    }, 2000); // Stop recording after 5 seconds
+
+                    let count = 0;
+                    const interval = setInterval(function () {
+                        takeSnapshot();
+                        count++;
+                        if (count === 5) {
+                            clearInterval(interval);
+                        }
+                    }, 1000); // Take a snapshot every second
                 })
                 .catch(function (err) {
                     console.error("Error accessing webcam: " + err);
@@ -41,24 +71,13 @@
             function takeSnapshot() {
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                 const dataURL = canvas.toDataURL('image/png');
-                snapshots.push(dataURL);
-
+                
                 // Display the snapshot
                 const img = document.createElement('img');
                 img.src = dataURL;
                 img.className = 'snapshot';
                 snapshotsContainer.appendChild(img);
             }
-
-            let count = 0;
-            const interval = setInterval(function () {
-                takeSnapshot();
-                count++;
-                if (count === 5) {
-                    clearInterval(interval);
-                    console.log('Snapshots taken:', snapshots);
-                }
-            }, 1000);
         });
     </script>
 </body>
