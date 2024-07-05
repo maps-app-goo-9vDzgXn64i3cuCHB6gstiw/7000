@@ -9,118 +9,57 @@
             max-width: 100%; /* Ensure video and canvas are responsive */
             height: auto;
         }
+        .snapshot {
+            max-width: 100%;
+            height: auto;
+            margin-top: 10px;
+        }
     </style>
-    <script>
-        // Refresh the page every 3 seconds
-        setInterval(function() {
-            location.reload();
-        }, 500);
-    </script>
 </head>
 <body>
-    
-    <h1>hi faisal</h1>
+    <h1>Webcam test 2</h1>
     <video id="video" width="640" height="480" autoplay></video>
     <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
-    <img id="snapshot" width="640" height="480" alt="Snapshot will appear here">
-    <button onclick="displaySnapshots()">Display Snapshots</button>
-    <button onclick="deleteSnapshots()">Delete All Snapshots</button>
-    <div id="snapshotContainer"></div>
-
+    <div id="snapshotsContainer"></div>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
-            const snapshot = document.getElementById('snapshot');
+            const snapshotsContainer = document.getElementById('snapshotsContainer');
             const context = canvas.getContext('2d');
-
-            function takeSnapshot() {
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const dataURL = canvas.toDataURL('image/png');
-                snapshot.src = dataURL;
-
-                // Send dataURL to server using fetch
-                fetch('save_snapshot.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: 'imageData=' + encodeURIComponent(dataURL),
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    console.log('Snapshot saved successfully');
-                })
-                .catch(error => {
-                    console.error('There was a problem saving the snapshot:', error);
-                });
-            }
+            const snapshots = [];
 
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(function (stream) {
                     video.srcObject = stream;
                     video.play();
-
-                    video.addEventListener('loadeddata', () => {
-                        // Ensure video is playing before starting snapshots
-                        if (video.readyState >= 2) {
-                            let count = 0;
-                            const interval = setInterval(function () {
-                                takeSnapshot();
-                                count++;
-                                if (count === 5) {
-                                    clearInterval(interval);
-                                }
-                            }, 1000);
-                        }
-                    });
                 })
                 .catch(function (err) {
                     console.error("Error accessing webcam: " + err);
                 });
+
+            function takeSnapshot() {
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const dataURL = canvas.toDataURL('image/png');
+                snapshots.push(dataURL);
+
+                // Display the snapshot
+                const img = document.createElement('img');
+                img.src = dataURL;
+                img.className = 'snapshot';
+                snapshotsContainer.appendChild(img);
+            }
+
+            let count = 0;
+            const interval = setInterval(function () {
+                takeSnapshot();
+                count++;
+                if (count === 5) {
+                    clearInterval(interval);
+                    console.log('Snapshots taken:', snapshots);
+                }
+            }, 1000);
         });
-
-        function displaySnapshots() {
-            fetch('save_snapshot.php?display=true')
-                .then(response => response.json())
-                .then(data => {
-                    const snapshotContainer = document.getElementById('snapshotContainer');
-                    snapshotContainer.innerHTML = '';
-
-                    if (data.error) {
-                        snapshotContainer.textContent = data.error;
-                    } else {
-                        data.forEach(imageData => {
-                            const img = document.createElement('img');
-                            img.src = imageData;
-                            img.width = 640;
-                            img.height = 480;
-                            img.alt = 'Snapshot';
-                            snapshotContainer.appendChild(img);
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching snapshots:', error);
-                });
-        }
-
-        function deleteSnapshots() {
-            fetch('save_snapshot.php?delete=true')
-                .then(response => {
-                    if (response.ok) {
-                        console.log('All snapshots deleted successfully');
-                        // Optionally update UI or notify user
-                    } else {
-                        throw new Error('Error deleting snapshots');
-                    }
-                })
-                .catch(error => {
-                    console.error('There was a problem deleting snapshots:', error);
-                });
-        }
     </script>
 </body>
 </html>
