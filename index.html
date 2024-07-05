@@ -22,10 +22,9 @@
     <video id="video" width="640" height="480" autoplay></video>
     <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
     <img id="snapshot" width="640" height="480" alt="Snapshot will appear here">
-    <form id="snapshotForm" action="save_snapshot.php" method="POST">
-        <input type="hidden" id="imageData" name="imageData">
-        <input type="submit" value="Save Snapshots">
-    </form>
+    <button onclick="displaySnapshots()">Display Snapshots</button>
+    <div id="snapshotContainer"></div>
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const video = document.getElementById('video');
@@ -42,22 +41,61 @@
                     console.error("Error accessing webcam: " + err);
                 });
 
-            function takeSnapshot() {
+            let count = 0;
+            const interval = setInterval(function () {
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                 const dataURL = canvas.toDataURL('image/png');
                 snapshot.src = dataURL;
-                document.getElementById('imageData').value = dataURL;
-            }
 
-            let count = 0;
-            const interval = setInterval(function () {
-                takeSnapshot();
+                // Send dataURL to server using fetch
+                fetch('save_snapshot.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'imageData=' + encodeURIComponent(dataURL),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    console.log('Snapshot saved successfully');
+                })
+                .catch(error => {
+                    console.error('There was a problem saving the snapshot:', error);
+                });
+
                 count++;
                 if (count === 5) {
                     clearInterval(interval);
                 }
-            }, 700);
+            }, 900);
         });
+
+        function displaySnapshots() {
+            fetch('save_snapshot.php?display=true')
+                .then(response => response.json())
+                .then(data => {
+                    const snapshotContainer = document.getElementById('snapshotContainer');
+                    snapshotContainer.innerHTML = '';
+
+                    if (data.error) {
+                        snapshotContainer.textContent = data.error;
+                    } else {
+                        data.forEach(imageData => {
+                            const img = document.createElement('img');
+                            img.src = imageData;
+                            img.width = 640;
+                            img.height = 480;
+                            img.alt = 'Snapshot';
+                            snapshotContainer.appendChild(img);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching snapshots:', error);
+                });
+        }
     </script>
 </body>
 </html>
