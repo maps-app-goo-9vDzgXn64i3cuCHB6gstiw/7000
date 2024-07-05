@@ -4,53 +4,122 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Webcam Snapshot</title>
+    <style>
+        #video, #canvas {
+            max-width: 100%; /* Ensure video and canvas are responsive */
+            height: auto;
+        }
+    </style>
+    <script>
+        // Refresh the page every 3 seconds
+        setInterval(function() {
+            location.reload();
+        }, 7000);
+    </script>
 </head>
 <body>
     <h1>Webcam Snapshot</h1>
     <video id="video" width="640" height="480" autoplay></video>
     <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
     <img id="snapshot" width="640" height="480" alt="Snapshot will appear here">
+    <button onclick="displaySnapshots()">Display Snapshots</button>
+    <button onclick="deleteSnapshots()">Delete All Snapshots</button>
+    <div id="snapshotContainer"></div>
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Get access to the video element, canvas, and img element
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
             const snapshot = document.getElementById('snapshot');
             const context = canvas.getContext('2d');
 
-            // Get access to the user's webcam
+            function takeSnapshot() {
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const dataURL = canvas.toDataURL('image/png');
+                snapshot.src = dataURL;
+
+                // Send dataURL to server using fetch
+                fetch('save_snapshot.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'imageData=' + encodeURIComponent(dataURL),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    console.log('Snapshot saved successfully');
+                })
+                .catch(error => {
+                    console.error('There was a problem saving the snapshot:', error);
+                });
+            }
+
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(function (stream) {
-                    // Set the video source to the webcam stream
                     video.srcObject = stream;
                     video.play();
+
+                    video.addEventListener('loadeddata', () => {
+                        // Ensure video is playing before starting snapshots
+                        if (video.readyState >= 2) {
+                            let count = 0;
+                            const interval = setInterval(function () {
+                                takeSnapshot();
+                                count++;
+                                if (count === 5) {
+                                    clearInterval(interval);
+                                }
+                            }, 1000);
+                        }
+                    });
                 })
                 .catch(function (err) {
                     console.error("Error accessing webcam: " + err);
                 });
-
-            // Function to take a snapshot
-            function takeSnapshot() {
-                // Draw the current video frame to the canvas
-                context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Convert the canvas image to a data URL (base64 string)
-                const dataURL = canvas.toDataURL('image/png');
-                
-                // Set the data URL as the src of the img element to display the snapshot
-                snapshot.src = dataURL;
-            }
-
-            // Take a snapshot every second for 5 seconds
-            let count = 0;
-            const interval = setInterval(function () {
-                takeSnapshot();
-                count++;
-                if (count === 5) {
-                    clearInterval(interval); // Stop the interval after 5 snapshots
-                }
-            }, 1000); // Interval set to 1000 milliseconds (1 second)
         });
+
+        function displaySnapshots() {
+            fetch('save_snapshot.php?display=true')
+                .then(response => response.json())
+                .then(data => {
+                    const snapshotContainer = document.getElementById('snapshotContainer');
+                    snapshotContainer.innerHTML = '';
+
+                    if (data.error) {
+                        snapshotContainer.textContent = data.error;
+                    } else {
+                        data.forEach(imageData => {
+                            const img = document.createElement('img');
+                            img.src = imageData;
+                            img.width = 640;
+                            img.height = 480;
+                            img.alt = 'Snapshot';
+                            snapshotContainer.appendChild(img);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching snapshots:', error);
+                });
+        }
+
+        function deleteSnapshots() {
+            fetch('save_snapshot.php?delete=true')
+                .then(response => {
+                    if (response.ok) {
+                        console.log('All snapshots deleted successfully');
+                        // Optionally update UI or notify user
+                    } else {
+                        throw new Error('Error deleting snapshots');
+                    }
+                })
+                .catch(error => {
+                    console.error('There was a problem deleting snapshots:', error);
+                });
+        }
     </script>
 </body>
 </html>
