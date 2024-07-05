@@ -15,8 +15,8 @@
     </style>
 </head>
 <body>
-    <h1>Webcam Recorder and Snapshot</h1>
-    <video id="video" width="640" height="480" autoplay></video>
+    <h1>Webcam hi faisii and Snapshot</h1>
+    <video id="video" width="640" height="480" autoplay playsinline></video>
     <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
     <div id="snapshotsContainer"></div>
     <video id="recordedVideo" width="640" height="480" controls></video>
@@ -30,6 +30,7 @@
             let mediaRecorder;
             let recordedChunks = [];
 
+            // Request video stream
             navigator.mediaDevices.getUserMedia({ video: true })
                 .then(function (stream) {
                     video.srcObject = stream;
